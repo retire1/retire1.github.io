@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retirement Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        input, select, button {
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        label {
+            font-size: 14px;
+        }
+        .bold {
+            font-weight: bold;
+        }
+    </style>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Retirement Planner</h1>
+    
+    <form id="retirement-form">
+        <label for="principal">Current Balance</label>
+        <input type="text" id="principal" value="100000" /><br>
+        
+        <label for="retirement_goal">Retirement Withdrawal (in today dollars)</label>
+        <input type="text" id="retirement_goal" value="50000" /><br>
+        
+        <label class="bold" for="retirement_goal_year">Retirement Year</label>
+        <select id="retirement_goal_year"></select><br>
+        
+        <h3 class="bold">1st Person</h3>
+
+		<label for="salary1">Salary per Year</label>
+		<input type="text" id="salary1" value="75000" /><br>
+
+		<label for="ira_contribution1">IRA Contribution per Year</label>
+		<input type="text" id="ira_contribution1" value="1000" />
+		<input type="checkbox" id="max_ira_contribution1">
+		<label for="max_ira_contribution1">Max Contribution?</label><br>
+
+
+		<label for="401k_contribution1">401k Contribution per Year</label>
+		<input type="text" id="401k_contribution1" value="5000" />
+		<input type="checkbox" id="max_401k_contribution1">
+		<label for="max_401k_contribution1">Max Contribution?</label><br>
+
+		<label for="401k_matching1">401k Matching (%)</label>
+		<input type="text" id="401k_matching1" value="5" /><br>
+
+		<label for="wage_growth1">Nominal Wage Growth per Year (%)</label>
+		<input type="text" id="wage_growth1" value="2.5" /><br>
+
+		<input type="checkbox" id="increase_max_limit1">
+		<label for="increase_max_limit1">Increase Maximum Limits for IRA and 401k at Nominal Rates?</label><br>
+
+        <h3 class="bold">2nd Person</h3>
+      
+		<label for="salary2">Salary per Year</label>
+		<input type="text" id="salary2" value="60000" /><br>
+
+		<label for="ira_contribution2">IRA Contribution per Year</label>
+		<input type="text" id="ira_contribution2" value="5000" />
+		<input type="checkbox" id="max_ira_contribution2">
+		<label for="max_ira_contribution2">Max Contribution?</label><br>
+
+		<label for="401k_contribution2">401k Contribution per Year</label>
+		<input type="text" id="401k_contribution2" value="10000" />
+		<input type="checkbox" id="max_401k_contribution2">
+		<label for="max_401k_contribution2">Max Contribution?</label><br>
+
+		<label for="401k_matching2">401k Matching (%)</label>
+		<input type="text" id="401k_matching2" value="5" /><br>
+
+		<label for="wage_growth2">Nominal Wage Growth per Year (%)</label>
+		<input type="text" id="wage_growth2" value="2.5" /><br>
+
+		<input type="checkbox" id="increase_max_limit2">
+		<label for="increase_max_limit2">Increase Maximum Limits for IRA and 401k at Nominal Rates?</label><br>
+
+        
+        <label>Investment Options:</label><br>
+        <input type="radio" id="sp500" name="investment_option" value="S&P 500" checked>
+        <label for="sp500">S&P 500</label>
+        <input type="radio" id="target_retirement_fund" name="investment_option" value="Target Retirement Fund">
+        <label for="target_retirement_fund">Target Retirement Fund (Select Year)</label><br>
+        
+        <label class="bold" for="target_year">Target Date Retirement Year</label>
+        <select id="target_year" disabled></select><br>
+        
+        <button type="button" id="calculate">Calculate Retirement</button>
+    </form>
+    <canvas id="myChart" width="1000" height="600"></canvas>
+
+    <script>
+        // Get the current year
+        const currentYear = new Date().getFullYear();
+
+        // Generate an array of years from currentYear + 1 to currentYear + 40
+        const years = Array.from({length: 40}, (_, i) => currentYear + i + 1);
+
+        // Populate the year dropdowns
+        const retirementGoalYearSelect = document.getElementById('retirement_goal_year');
+        const targetYearSelect = document.getElementById('target_year');
+
+		// Dummy default values for initializing the inputs
+		const defaults = {
+			salary1: "75000",
+			ira1: "6000",
+			ira2: "5500",
+			'401k1': "19000",
+			'401k2': "18500",
+			'401k1m': "4",
+			'401k2m': "3",
+			'wg1': "2",
+			'wg2': "1.5"
+		};
+
+		// Function to update the contribution fields when max is checked
+		function updateFields(person) {
+			const iraContribution = document.getElementById(`ira_contribution${person}`);
+			const maxIRAContribution = document.getElementById(`max_ira_contribution${person}`);
+			const kContribution = document.getElementById(`401k_contribution${person}`);
+			const maxKContribution = document.getElementById(`max_401k_contribution${person}`);
+
+			// For IRA
+			if (maxIRAContribution.checked) {
+				iraContribution.value = '6500'; // Set your max IRA contribution
+				iraContribution.disabled = true; // Disable the input
+			} else {
+				iraContribution.disabled = false; // Enable the input
+			}
+
+			// For 401k
+			if (maxKContribution.checked) {
+				kContribution.value = '22500'; // Set your max 401k contribution
+				kContribution.disabled = true; // Disable the input
+			} else {
+				kContribution.disabled = false; // Enable the input
+			}
+		}
+
+		// Event listeners for the checkboxes
+		document.getElementById('max_ira_contribution1').addEventListener('change', () => updateFields('1'));
+		document.getElementById('max_401k_contribution1').addEventListener('change', () => updateFields('1'));
+		document.getElementById('max_ira_contribution2').addEventListener('change', () => updateFields('2'));
+		document.getElementById('max_401k_contribution2').addEventListener('change', () => updateFields('2'));
+
+        years.forEach(year => {
+            retirementGoalYearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+            targetYearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+        });
+
+        // Function to toggle the target year dropdown based on the selected investment option
+		function toggleDropdown() {
+			const isTargetFundSelected = document.getElementById('target_retirement_fund').checked;
+			
+			// Find the select element by its ID and set its disabled property
+			const targetYearSelect = document.getElementById('target_year');
+			targetYearSelect.disabled = !isTargetFundSelected;
+		}
+
+		// Add an event listener to the checkbox
+		document.getElementById('target_retirement_fund').addEventListener('change', toggleDropdown);
+
+		// Optionally: Set the initial state of the dropdown when the page loads, based on the checkbox state
+		window.addEventListener('load', toggleDropdown)
+
+		// retirement calculation
+        document.getElementById('calculate').addEventListener('click', function() {
+			function safeFloatConversion(value, defaultVal = 0.0) {
+				try {
+					return parseFloat(value);
+				} catch (e) {
+					return defaultVal;
+				}
+			}
+			
+			// Retrieve user inputs
+            const principal = parseFloat(document.getElementById('principal').value);
+            const retirementGoal = parseFloat(document.getElementById('retirement_goal').value);
+            const salary1 = parseFloat(document.getElementById('salary1').value);
+            const iraContribution1 = parseFloat(document.getElementById('ira_contribution1').value);
+            const kContribution1 = parseFloat(document.getElementById('401k_contribution1').value);
+            const kMatching1 = parseFloat(document.getElementById('401k_matching1').value) / 100;
+            const wageGrowth1 = parseFloat(document.getElementById('wage_growth1').value) / 100;
+            
+            const salary2 = parseFloat(document.getElementById('salary2').value);
+            const iraContribution2 = parseFloat(document.getElementById('ira_contribution2').value);
+            const kContribution2 = parseFloat(document.getElementById('401k_contribution2').value);
+            const kMatching2 = parseFloat(document.getElementById('401k_matching2').value) / 100;
+            const wageGrowth2 = parseFloat(document.getElementById('wage_growth2').value) / 100;
+
+            const investmentOption = document.querySelector('input[name="investment_option"]:checked').value;
+            
+            const yearsToRetire = parseFloat(document.getElementById('retirement_goal_year').value) - currentYear;
+            
+			let interestYears = [0.0994, -0.1944, 0.2689, 0.1626, 0.2888, -0.0624, 0.1942, 0.0954, -0.0073, 0.1139,
+                  0.296, 0.1341, 0.0, 0.1278, 0.2345, -0.3849, 0.0353, 0.1362, 0.03, 0.0899, 0.2638,
+                  -0.2337, -0.1304, -0.1014, 0.1953, 0.2667, 0.3101, 0.2026, 0.3411, -0.0154, 0.0706,
+                  0.0446, 0.2631, -0.0656, 0.2725, 0.124, 0.0203, 0.1462, 0.2633, 0.014, 0.1727, 0.1476,
+                  -0.0973, 0.2577, 0.1231, 0.0106, -0.115, 0.1915, 0.3155, -0.2972, -0.1737, 0.1563,
+                  0.1079, 0.001, -0.1136, 0.0766, 0.2009, -0.1309, 0.0906, 0.1297, 0.1889, -0.1181,
+                  0.2313, -0.0297, 0.0848, 0.3806, -0.1431, 0.0262, 0.264, 0.4502, -0.0662, 0.1178,
+                  0.1646, 0.2178, 0.1026, -0.0065, 0.0, -0.1187, 0.3072, 0.138, 0.1945, 0.1243,
+                  -0.1786, -0.1529, -0.0545, 0.2521, -0.3859, 0.2792, 0.4137, -0.0594, 0.4659,
+                  -0.1515, -0.4707, -0.2848, -0.1191, 0.3788];
+			let interestTaper = [0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,0.088,
+                      0.09,0.092,0.096,0.098,0.01,0.1076, 0.1099, 0.1121,0.1144,0.1167,0.1189,0.1212,
+                      0.1229,0.1252,0.128,0.14,0.1548,0.17,0.1855,0.2016,0.218,0.2349,0.2522,0.27,0.288,
+                      0.3066,0.3256,0.345,0.4025,0.4615,0.5220,0.584,0.6475,0.71,0.74,0.77,0.78,0.79,0.8,0.82,
+                      0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,
+                      0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,
+                      0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,
+                      0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,
+                      0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82,0.82];
+			
+			if (investmentOption === "S&P 500") {
+				interestTaper = interestTaper.map(x => x * 0);
+			}
+			
+			const yearsRet = interestTaper.map((val, i) => 55 - i);
+			const yearDifference = targetYearSelect - new Date().getFullYear();
+			const indices = yearsRet.map((y, index) => y === yearDifference ? index : -1).filter(index => index !== -1);
+			const firstIndex = indices[0];
+			
+			interestTaper = interestTaper.slice(firstIndex);
+			
+			const increase_max_limit1 = document.getElementById('increase_max_limit1');
+			if (increase_max_limit1.checked) {
+				const increase_ira1 = document.getElementById('max_ira_contribution1');
+				if (increase_ira1.checked) {
+					ira1 = 0.018;
+				} else {
+					ira1 = 0;
+				}
+				const increase_401k1 = document.getElementById('max_401k_contribution1');
+				if (increase_401k1.checked) {
+					k1 = 0.028;
+				} else {
+					k1 = 0;
+				}
+			} else {
+				ira1 = 0;
+				k1 = 0;
+			}
+			
+			const increase_max_limit2 = document.getElementById('increase_max_limit2');
+			if (increase_max_limit2.checked) {
+				const increase_ira2 = document.getElementById('max_ira_contribution2');
+				if (increase_ira2.checked) {
+					ira2 = 0.018;
+				} else {
+					ira2 = 0;
+				}
+				const increase_401k2 = document.getElementById('max_401k_contribution2');
+				if (increase_401k2.checked) {
+					k2 = 0.028;
+				} else {
+					k2 = 0;
+				}
+			} else {
+				ira2 = 0;
+				k2 = 0;
+			}
+			
+			wg1 = wageGrowth1;
+			wg2 = wageGrowth2;
+			
+			match1 = kMatching1;
+			match2 = kMatching2;
+			
+			contributions = [
+				{'C': (iraContribution1), 'r': Math.pow((1 + ira1), (1/365)) - 1},
+				{'C': (kContribution1), 'r': Math.pow((1 + k1), (1/365)) - 1},
+				{'C': salary1 * (match1) / 100, 'r': Math.pow((1 + wg1/100), (1/365)) - 1},
+				{'C': (iraContribution2), 'r': Math.pow((1 + ira2), (1/365)) - 1},
+				{'C': (kContribution2), 'r': Math.pow((1 + k2), (1/365)) - 1},
+				{'C': salary2 * (match2) / 100, 'r': Math.pow((1 + wg2/100), (1/365)) - 1}
+			];
+            
+			function calculateBalancePerYear(startingInterestRate, eY, Y, yearsRet, withdrawl) {
+				// Initialize variables
+				let balance = principal;
+				let year = interestYears.indexOf(startingInterestRate);
+				let balancesPerYear = [];
+				// Calculate balance per year over N years
+				for (let i = 0; i < (eY - Y - 1); i++) {
+					// Get the interest rate for the current year
+					let interestRate = interestYears[year];
+
+					// Interest rate combine with tapering of interest rate to less riskier investments
+					interestRate = interestRate * (1 - interestTaper[i]) + 0.03 * (interestTaper[i]);
+
+					// Calculate the daily growth rate for principal
+					let dailyGrowthRate = Math.pow((1 + interestRate), (1 / 365)) - 1;
+
+					// Calculate the yearly contributions with their growth rates
+					let yearlyContributions = contributions.map(contribution => {
+						return contribution['C'] * Math.pow((1 + contribution['r']), (365 * (i + 1)));
+					});
+
+					// Calculate the total contributions for the year
+					let totalContributions;
+					if (yearsRet[i] <= 0) {
+						if (yearsRet[i] === 0) {
+							totalContributions = withdrawl * Math.pow(1.03, yearsRet[0]);
+						} else {
+							totalContributions = totalContributions * 1.03;
+						}
+						yearlyContributions = [0, -1 * totalContributions];
+					}
+
+					// Calculate the daily balance growth for principal
+					balance *= Math.pow((1 + dailyGrowthRate), 365);
+
+					// Update the balance with the daily contributions
+					for (let contribution of yearlyContributions) {
+						balance += contribution;
+					}
+					
+					if (balance < 0) {
+						balance = 0;
+					}
+
+					// Append the balance per year to the list
+					balancesPerYear.push(balance);
+
+					// Increment the year counter
+					year = (year + 1) % interestYears.length;
+				}
+
+				return balancesPerYear;
+			}
+
+			function formatCurrency(x, pos) {
+				return '$' + x.toLocaleString('en-US', {minimumFractionDigits: 0});
+			}
+			
+			// Number of lines to plot
+			const n = interestYears.length;
+			
+			// Lists to store data for plotting
+			const nY = 75;
+			const Y = new Date().getFullYear();
+			const eY = nY + Y;
+			let years = Array.from({length: eY - (Y + 1)}, (v, k) => k + Y + 1);
+			
+			let balancesPerYear = [];
+			let reachedList = [];
+
+			// Calculate balance per year for each starting interest rate
+			for (let i = 0; i < n; i++) {
+				const startingInterestRate = interestYears[i];
+				
+				const balances = calculateBalancePerYear(startingInterestRate, eY, Y, yearsRet, retirementGoal);
+				balancesPerYear.push(balances);
+			}
+			const datasets = [];
+			for (let i = 0; i < 96; i++) {
+				datasets.push({
+					data: balancesPerYear[i],
+					label: 'Series ' + (i + 1),
+					borderColor: 'rgb(' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) + ')',
+					fill: false
+				});
+			}
+			const options = {
+				scales: {
+					x: {
+						title: {
+							display: true,
+							text: 'Year'
+						}
+					},
+					y: {
+						title: {
+							display: true,
+							text: 'Balance per Year'
+						},
+						beginAtZero: true
+					}
+				},
+				plugins: {
+					title: {
+						display: true,
+						text: 'Balance per Year - Year 1 Start from 1928-2023'
+					},
+					legend: {
+						display: false
+					}
+				}
+			};
+			const ctx = document.getElementById('myChart').getContext('2d');
+			const myChart = new Chart(ctx, {
+				type: 'line',
+				data: {
+					labels: years,  // Assuming `years` is an array of year values, similar to `years` in the Python code
+					datasets: datasets
+				},
+				options: options
+			});
+		});
+
+    </script>
+</body>
+</html>
