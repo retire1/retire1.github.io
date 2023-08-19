@@ -63,7 +63,7 @@
         <h3 class="bold">2nd Person</h3>
       
 		<label for="salary2">Salary per Year</label>
-		<input type="text" id="salary2" value="60000" /><br>
+		<input type="text" id="salary2" value="55000" /><br>
 
 		<label for="ira_contribution2">IRA Contribution per Year</label>
 		<input type="text" id="ira_contribution2" value="5000" />
@@ -108,19 +108,6 @@
         // Populate the year dropdowns
         const retirementGoalYearSelect = document.getElementById('retirement_goal_year');
         const targetYearSelect = document.getElementById('target_year');
-
-		// Dummy default values for initializing the inputs
-		const defaults = {
-			salary1: "75000",
-			ira1: "6000",
-			ira2: "5500",
-			'401k1': "19000",
-			'401k2': "18500",
-			'401k1m': "4",
-			'401k2m': "3",
-			'wg1': "2",
-			'wg2': "1.5"
-		};
 
 		// Function to update the contribution fields when max is checked
 		function updateFields(person) {
